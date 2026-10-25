@@ -1,9 +1,6 @@
 name: Build and publish WUD Chinese image
 
 on:
-  push:
-    branches: [main]
-    paths: [upstream.lock.json, translations/memory.json, translations/zh-CN.json]
   workflow_dispatch:
 
 permissions:

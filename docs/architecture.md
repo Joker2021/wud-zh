@@ -8,6 +8,8 @@
 
 上游代码只在无翻译密钥的安装/构建/测试步骤执行。Youdao Secrets 只进入项目翻译脚本进程，不传给 npm、Docker BuildKit 或上游脚本。工作流由 schedule、workflow_dispatch 和翻译门禁成功后的显式构建派发驱动；外部 PR 代码不接触 Secrets。
 
+Fork 继承的上游 `ci.yml` 已在 GitHub Actions 中禁用，避免触发上游的 Docker 镜像发布、截图回写或文档站点部署。`build-release.yml` 仅响应手动派发或通过翻译测试后的显式派发。
+
 翻译和兼容性门禁通过后，workflow bot 自动写入 fork 的 `main` 并派发镜像构建；GitHub Actions 的 `GITHUB_TOKEN` 推送不会依赖 push 事件触发后续工作流。镜像只有在构建、manifest 校验和 amd64 启动/认证/中文资源烟测通过后才发布。
 
 翻译键由相对文件、Vue 元素/属性上下文和源文生成 SHA-256。翻译记忆不会依赖 Actions 临时缓存。若文本结构移动到脚本、后端响应或动态表达式，提取覆盖率门禁停止发布，由维护者调整提取器并审阅。
