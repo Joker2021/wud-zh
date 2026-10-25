@@ -140,6 +140,7 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           test -n "$IMAGE"
+          IMAGE="${IMAGE,,}"
           version_tag="${VERSION}-zh.1"
           if docker buildx imagetools inspect "$IMAGE:$version_tag" >/dev/null 2>&1; then
             echo "Refusing to overwrite immutable image tag $version_tag" >&2
