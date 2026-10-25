@@ -50,7 +50,13 @@ jobs:
           node scripts/i18n.mjs extract --upstream upstream --output /tmp/wud-strings.json
           node scripts/i18n.mjs apply --upstream upstream --translations translations/zh-CN.json --report /tmp/wud-coverage.json
           (cd upstream/ui && npm run build)
-          if ! rg -q '[一-龥]' upstream/ui/dist; then echo 'Built UI has no Chinese text' >&2; exit 1; fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          files = (p for p in Path("upstream/ui/dist").rglob("*") if p.is_file() and p.suffix in {".js", ".html"})
+          if not any(re.search(r"[\u4e00-\u9fff]", p.read_text(encoding="utf-8", errors="ignore")) for p in files):
+              raise SystemExit("Built UI has no Chinese text")
+          PY
           cat /tmp/wud-coverage.json >> "$GITHUB_STEP_SUMMARY"
       - name: Build multi-architecture OCI archive
         env:
