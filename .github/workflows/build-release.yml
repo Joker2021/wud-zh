@@ -114,6 +114,10 @@ jobs:
   publish:
     needs: validate-build
     runs-on: ubuntu-latest
+    # Serialize registry mutations. Older jobs re-check main before moving stable/latest.
+    concurrency:
+      group: wud-zh-ghcr-publish
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write
@@ -142,13 +146,59 @@ jobs:
           test -n "$IMAGE"
           IMAGE="${IMAGE,,}"
           version_tag="${VERSION}-zh.1"
-          if docker buildx imagetools inspect "$IMAGE:$version_tag" >/dev/null 2>&1; then
-            echo "Refusing to overwrite immutable image tag $version_tag" >&2
-            exit 1
-          fi
           sudo apt-get update -qq && sudo apt-get install -y -qq skopeo
           candidate="$IMAGE:candidate-$SHA"
           skopeo copy --all --dest-authfile "$HOME/.docker/config.json" oci-archive:/tmp/wud-image.oci.tar "docker://$candidate"
           docker buildx imagetools inspect --raw "$candidate" | jq -e '([.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null) and ([.manifests[].platform | select(.os == "linux") | .architecture] | index("arm64") != null)'
-          docker buildx imagetools create --tag "$IMAGE:$version_tag" --tag "$IMAGE:stable" --tag "$IMAGE:latest" "$candidate"
-          gh release create "wud-${version_tag}" --title "WUD ${VERSION} 简体中文版" --notes "基于 WUD ${VERSION}（${COMMIT}）构建。镜像：${IMAGE}:${version_tag}。双架构构建及 amd64 启动检查已通过。"
+
+          image_digest() {
+            local digest
+            digest="$(docker buildx imagetools inspect "$1" | sed -n 's/^Digest: //p' | head -n 1)"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Could not read manifest digest for $1" >&2; return 1; }
+            printf '%s' "$digest"
+          }
+
+          candidate_digest="$(image_digest "$candidate")"
+          if version_inspect="$(docker buildx imagetools inspect "$IMAGE:$version_tag" 2>&1)"; then
+            version_digest="$(printf '%s\n' "$version_inspect" | sed -n 's/^Digest: //p' | head -n 1)"
+            [[ "$version_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Could not read manifest digest for existing tag $version_tag" >&2; exit 1; }
+            if [[ "$version_digest" != "$candidate_digest" ]]; then
+              echo "Immutable image tag $version_tag already exists with a different digest" >&2
+              exit 1
+            fi
+            echo "Immutable image tag $version_tag already matches $candidate_digest; resuming publication."
+          else
+            if ! grep -Eqi '(manifest unknown|not found)' <<<"$version_inspect"; then
+              echo "Could not safely determine whether immutable image tag $version_tag exists:" >&2
+              echo "$version_inspect" >&2
+              exit 1
+            fi
+            docker buildx imagetools create --tag "$IMAGE:$version_tag" "$candidate"
+            version_digest="$(image_digest "$IMAGE:$version_tag")"
+            if [[ "$version_digest" != "$candidate_digest" ]]; then
+              echo "Published image tag $version_tag digest does not match the validated candidate" >&2
+              exit 1
+            fi
+          fi
+
+          release_tag="wud-${version_tag}"
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            echo "GitHub Release $release_tag already exists; continuing publication."
+          else
+            gh release create "$release_tag" --title "WUD ${VERSION} 简体中文版" --notes "基于 WUD ${VERSION}（${COMMIT}）构建。镜像：${IMAGE}:${version_tag}。双架构构建及 amd64 启动检查已通过。"
+          fi
+
+          # Only the lock currently on main may advance the mutable aliases. A queued
+          # older build can still finish its immutable release without rolling aliases back.
+          current_lock="$(gh api "repos/${GITHUB_REPOSITORY}/contents/upstream.lock.json?ref=main" --jq '.content' | base64 --decode)"
+          if ! python3 - "$current_lock" "$VERSION" "$COMMIT" <<'PY'
+          import json, sys
+          current = json.loads(sys.argv[1])
+          raise SystemExit(0 if current.get("version") == sys.argv[2] and current.get("commit") == sys.argv[3] else 1)
+          PY
+          then
+            echo "main has advanced beyond WUD ${VERSION} (${COMMIT}); leaving stable/latest unchanged."
+            exit 0
+          fi
+
+          docker buildx imagetools create --tag "$IMAGE:stable" --tag "$IMAGE:latest" "$candidate"

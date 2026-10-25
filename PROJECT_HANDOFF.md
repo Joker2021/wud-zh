@@ -6,11 +6,12 @@
 
 ## 当前版本与发布状态
 
-- 当前维护分支：`main`；镜像发布流程代码提交：`d81c0d0`。
+- 当前维护分支：`main`；HEAD 为 `e58ab6a`。本地有未提交的发布流程可靠性优化，尚未推送生效。
 - 当前发布基线：WUD `9.6.0`，上游 commit `ae3c0827c020e62ba15b8df6edd5b04aa05e9e62`。官方 Release 页面标为 Latest，发布日期 2026-10-24。
 - 首次中文镜像已发布：[WUD 9.6.0 简体中文版 Release](https://github.com/Joker2021/wud-zh/releases/tag/wud-9.6.0-zh.1)。GHCR `ghcr.io/joker2021/wud-zh` 的 `9.6.0-zh.1`、`stable`、`latest` 均已确认包含 `amd64` 与 `arm64`。
 - [发布工作流](https://github.com/Joker2021/wud-zh/actions/runs/40221070914)通过上游测试、中文覆盖门禁、多架构构建、amd64 启动/认证/中文资源烟测及 GHCR 清单校验。
 - 9.6.0 的 331 个静态文案键（236 条不同原文）由 Codex 离线初译并入库，首次没有请求有道；机器译文尚未人工复核。NAS 未连接、未部署。
+- 本次本地优化了 GHCR 发布续跑与稳定别名保护：相同版本镜像 digest 可安全续跑；不同 digest 会停止；只有 `main` 仍锁定本次版本和 commit 时才更新 `stable/latest`。YAML、所有内嵌 shell 语法和差异检查通过；尚未推送或做真实发布验证。
 
 ## 关键目录
 
@@ -41,3 +42,4 @@
 - 翻译提取：`node scripts/i18n.mjs extract --upstream /path/to/wud --output /tmp/wud-strings.json`
 - 上游状态：`python3 scripts/check_upstream.py --current upstream.lock.json`
 - 出错时保留现有 `upstream.lock.json` 和 GHCR 版本标签；回退部署时将 Compose 镜像版本改回此前成功的不可变 tag。
+- 发布工作流本地检查：解析 `.github/workflows/build-release.yml`，对每个 `run` 脚本执行 `bash -n`，再运行 `git diff --check`。

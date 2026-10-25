@@ -9,6 +9,7 @@ This fork rebuilds the official WUD source at a fixed, published stable release,
 - Never expose `YOUDAO_APP_SECRET` or pass it to upstream code, Docker builds, or untrusted pull-request jobs.
 - Never build from `main`, `latest`, or a moving branch. `upstream.lock.json` must contain the published release tag and resolved commit SHA.
 - Never overwrite an existing immutable image version. A failed update must leave the last stable image tags unchanged.
+- Publish jobs must serialize GHCR tag mutations, verify an existing immutable tag by manifest digest before resuming, and re-read `upstream.lock.json` from `main` immediately before moving `stable/latest`; an older queued build may publish its immutable version but must not roll aliases backward.
 - WUD requires Docker API access to monitor a Docker host. A socket mounted `:ro` still grants powerful Docker API operations.
 - Do not enable Docker or Docker Compose update triggers in the sample deployment.
 
