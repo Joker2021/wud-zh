@@ -78,11 +78,32 @@ jobs:
           auth="$(curl --silent --user "smoke:$password" --output /tmp/wud-containers.json --write-out '%{http_code}' http://127.0.0.1:18765/api/containers)"
           test "$auth" = 200
           jq -e 'type == "array"' /tmp/wud-containers.json
-          html="$(curl --fail --silent --location http://127.0.0.1:18765/)"
-          echo "$html" | grep -q '<script'
-          asset="$(echo "$html" | sed -nE 's/.*<script[^>]*src="([^"]+)".*/\1/p' | head -1)"
-          test -n "$asset"
-          curl --fail --silent "http://127.0.0.1:18765$asset" | python3 -c 'import re,sys; sys.exit(0 if re.search(r"[\u4e00-\u9fff]", sys.stdin.read()) else 1)'
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin
+          from urllib.request import urlopen
+          import re
+
+          base = "http://127.0.0.1:18765/"
+          class Scripts(HTMLParser):
+              sources = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == "script":
+                      src = dict(attrs).get("src")
+                      if src:
+                          self.sources.append(src)
+
+          parser = Scripts()
+          parser.feed(urlopen(base).read().decode("utf-8", errors="replace"))
+          if not parser.sources:
+              raise SystemExit("No JavaScript assets found in UI")
+          for src in parser.sources:
+              text = urlopen(urljoin(base, src)).read().decode("utf-8", errors="replace")
+              if re.search(r"[\u4e00-\u9fff]", text):
+                  break
+          else:
+              raise SystemExit("No Chinese text found in referenced JavaScript assets")
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wud-image-${{ github.sha }}
