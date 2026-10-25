@@ -2,7 +2,7 @@
 
 本项目从 WUD 官方**已发布稳定 Release 的固定 commit**构建，不维护 WUD 后端分叉。它以 Vue 编译器 AST 提取和替换 UI 模板中的静态英文文本，使用有道智云翻译新增文案，并在翻译覆盖、上游构建和测试通过后发布多架构 GHCR 镜像。
 
-当前核对基线为 WUD 9.6.0（上游 commit `ae3c0827c020e62ba15b8df6edd5b04aa05e9e62`）。此工程尚未关联 GitHub fork，也未发布镜像；请先完成[GitHub 配置](docs/github-setup.md)。
+当前发布基线为 WUD 9.6.0（上游 commit `ae3c0827c020e62ba15b8df6edd5b04aa05e9e62`）。[Joker2021/wud-zh](https://github.com/Joker2021/wud-zh) 是此项目的 fork；[9.6.0 简体中文版镜像](https://github.com/Joker2021/wud-zh/releases/tag/wud-9.6.0-zh.1) 已发布，地址为 `ghcr.io/joker2021/wud-zh:9.6.0-zh.1`。
 
 ## 本地翻译流程
 
@@ -13,7 +13,7 @@ node scripts/i18n.mjs extract --upstream /path/to/wud --output /tmp/wud-strings.
 python3 scripts/translate.py /tmp/wud-strings.json --version 9.6.0 --dry-run
 ```
 
-设置 `YOUDAO_APP_KEY` 与 `YOUDAO_APP_SECRET` 后，去掉 `--dry-run` 生成记忆库和覆盖文件，再应用到一次性上游副本：
+首次 9.6.0 翻译由 Codex 离线完成（331 个键、236 条不同原文，没有调用有道；译文尚待人工复核）。后续自动流程复用翻译记忆，只有未缓存的新文案才调用有道。若要手动翻译缓存未命中文案，设置 `YOUDAO_APP_KEY` 与 `YOUDAO_APP_SECRET` 后去掉 `--dry-run`：
 
 ```sh
 python3 scripts/translate.py /tmp/wud-strings.json --version 9.6.0
@@ -40,6 +40,6 @@ node scripts/i18n.mjs apply --upstream /path/to/wud --translations translations/
 python3 -m unittest discover -s tests -v
 ```
 
-当前测试只检查项目脚本的签名、占位符、缓存和失败原子性。上游应用测试、多架构构建、容器启动与真实绿联环境验证都由后续 Actions 或现场执行，不能从本地单元测试推断通过。
+项目测试检查脚本签名、占位符、缓存和失败原子性。9.6.0 上游测试、翻译覆盖门禁、多架构构建、amd64 容器烟测及 GHCR 发布已由[首次发布工作流](https://github.com/Joker2021/wud-zh/actions/runs/40221070914)验证；ARM64 运行时和真实绿联环境仍未验证。
 
 更多信息：[`docs/upstream-analysis.md`](docs/upstream-analysis.md)、[`docs/architecture.md`](docs/architecture.md)、[`PROJECT_HANDOFF.md`](PROJECT_HANDOFF.md)。
