@@ -64,7 +64,7 @@ jobs:
           COMMIT: ${{ steps.source.outputs.commit }}
         run: |
           docker buildx build --platform linux/amd64,linux/arm64 --file upstream/Dockerfile --build-arg WUD_VERSION="$VERSION" --label org.opencontainers.image.source=https://github.com/getwud/wud --label org.opencontainers.image.revision="$COMMIT" --label org.opencontainers.image.version="$VERSION" --output type=oci,dest=/tmp/wud-image.oci.tar upstream
-          tar -xOf /tmp/wud-image.oci.tar index.json | jq -e '[.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null and index("arm64") != null'
+          tar -xOf /tmp/wud-image.oci.tar index.json | jq -e '([.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null) and ([.manifests[].platform | select(.os == "linux") | .architecture] | index("arm64") != null)'
       - name: Smoke-test amd64 image without Docker Socket
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq skopeo
@@ -128,6 +128,6 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq skopeo
           candidate="$IMAGE:candidate-$SHA"
           skopeo copy --all --dest-authfile "$HOME/.docker/config.json" oci-archive:/tmp/wud-image.oci.tar "docker://$candidate"
-          docker buildx imagetools inspect --raw "$candidate" | jq -e '[.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null and index("arm64") != null'
+          docker buildx imagetools inspect --raw "$candidate" | jq -e '([.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null) and ([.manifests[].platform | select(.os == "linux") | .architecture] | index("arm64") != null)'
           docker buildx imagetools create --tag "$IMAGE:$version_tag" --tag "$IMAGE:stable" --tag "$IMAGE:latest" "$candidate"
           gh release create "wud-${version_tag}" --title "WUD ${VERSION} 简体中文版" --notes "基于 WUD ${VERSION}（${COMMIT}）构建。镜像：${IMAGE}:${version_tag}。双架构构建及 amd64 启动检查已通过。"
