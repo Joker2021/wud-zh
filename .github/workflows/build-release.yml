@@ -153,14 +153,28 @@ jobs:
 
           image_digest() {
             local digest
-            digest="$(docker buildx imagetools inspect "$1" | sed -n 's/^Digest: //p' | head -n 1)"
+            digest="$(docker buildx imagetools inspect "$1" | digest_from_inspect)"
             [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Could not read manifest digest for $1" >&2; return 1; }
             printf '%s' "$digest"
           }
 
+          digest_from_inspect() {
+            local digest
+            digest="$(awk '$1 == "Digest:" { print $2; exit }')"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+            printf '%s' "$digest"
+          }
+
+          expected_digest="sha256:$(printf '%064d' 0)"
+          test "$(printf 'Digest:    %s\n' "$expected_digest" | digest_from_inspect)" = "$expected_digest"
+          if printf 'Digest:    invalid\n' | digest_from_inspect >/dev/null; then
+            echo "Digest parser accepted invalid output" >&2
+            exit 1
+          fi
+
           candidate_digest="$(image_digest "$candidate")"
           if version_inspect="$(docker buildx imagetools inspect "$IMAGE:$version_tag" 2>&1)"; then
-            version_digest="$(printf '%s\n' "$version_inspect" | sed -n 's/^Digest: //p' | head -n 1)"
+            version_digest="$(printf '%s\n' "$version_inspect" | digest_from_inspect)" || { echo "Could not read manifest digest for existing tag $version_tag" >&2; exit 1; }
             [[ "$version_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Could not read manifest digest for existing tag $version_tag" >&2; exit 1; }
             if [[ "$version_digest" != "$candidate_digest" ]]; then
               echo "Immutable image tag $version_tag already exists with a different digest" >&2
