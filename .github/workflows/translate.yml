@@ -145,16 +145,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add upstream.lock.json translations/memory.json translations/zh-CN.json
-          git commit -m "更新 WUD 上游版本至 ${VERSION}"
-          cat > /tmp/git-askpass <<'SH'
-          #!/bin/sh
-          case "$1" in
-            *Username*) printf '%s\n' x-access-token ;;
-            *) printf '%s\n' "$GH_TOKEN" ;;
-          esac
-          SH
-          chmod 700 /tmp/git-askpass
-          GIT_ASKPASS=/tmp/git-askpass GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
+          if ! git diff --cached --quiet; then
+            git commit -m "更新 WUD 上游版本至 ${VERSION}"
+            printf '%s\n' '#!/bin/sh' 'case "$1" in' '  *Username*) printf "%s\n" x-access-token ;;' '  *) printf "%s\n" "$GH_TOKEN" ;;' 'esac' > /tmp/git-askpass
+            chmod 700 /tmp/git-askpass
+            GIT_ASKPASS=/tmp/git-askpass GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
+          else
+            echo "版本锁和翻译记忆已是最新，跳过空提交。" >> "$GITHUB_STEP_SUMMARY"
+          fi
           gh workflow run build-release.yml --ref main
           echo "已将 WUD ${VERSION}（${COMMIT}）及翻译记忆写入 main，并派发 build-release.yml。" >> "$GITHUB_STEP_SUMMARY"
       - name: Report failure

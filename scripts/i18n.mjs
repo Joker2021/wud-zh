@@ -106,7 +106,7 @@ function apply() {
       }
       const value = entry.context.endsWith(":text")
         ? `${entry.prefix}${translation.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}${entry.suffix}`
-        : translation.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+        : `"${translation.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;")}"`;
       updated = updated.slice(0, entry.start) + value + updated.slice(entry.end);
       report.translated += 1;
     }

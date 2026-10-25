@@ -30,9 +30,9 @@ WUD v9 强制管理员认证。官方启动参数为 `WUD_AUTH_ADMIN_USER` 与 `
 ## 当前证据与缺口
 
 - 已核对 9.6.0 源码结构与 package 清单、Release 页面、commit SHA、Docker 构建规则和 v9 管理员配置。CI 将从 9.6.0 固定 commit 重新获取并验证。
-- 上游 UI 单测通过（48 suites / 447 tests）；使用测试占位译文的 AST 应用后，Vue UI production build 通过。该假译文只用于临时源码构建验证，没有写入项目翻译库。
+- 上游 UI 单测通过（48 suites / 447 tests）；离线生成的 9.6.0 中文译文应用到临时上游源码后，覆盖 341 个模板位置且无未翻译项，Vue UI production build 通过。构建有 6 项上游 CSS/PWA/资源体积警告，无编译错误。
 - 上游后端 Jest 131 套件/2501 项通过，TypeScript `npm run build` 通过；测试运行需 `--forceExit` 处理上游未关闭的异步句柄。Docker 启动、认证请求、容器镜像更新集成测试和真实 NAS 测试仍未完成。
-- 已使用 9.6.0 上游编译器真实提取到 331 个不同上下文的静态模板文案键；术语表直接覆盖 14 个键，另有 317 个键需要 Youdao API 翻译。目前无 Youdao 凭据，translation cache 为空，也没有完整人工审校译文。
-- 项目 Python 测试 8 项、上游 UI 单测 48 套件/447 项、上游后端测试 131 套件/2501 项，以及 UI production build 和后端 TypeScript build 均通过；多架构镜像流程尚未通过本地执行。
-- 未配置 GitHub 仓库、Secrets、GHCR 权限和 NAS，因此自动更新/发布链路尚未实际端到端执行。
+- 已使用 9.6.0 上游编译器提取 331 个静态模板文案键，包含 236 种不同原文。首批中文由 Codex 离线生成并写入持久翻译记忆；0 次 Youdao 请求，模型译文尚待人工复核。以后只有新版本缓存未命中的文案才需要 Youdao Secrets。
+- 项目 Python 测试 8 项、上游 UI 单测 48 套件/447 项、上游后端测试 131 套件/2501 项，以及当前中文 UI production build 和后端 TypeScript build 均通过；多架构镜像流程尚未通过本地执行。
+- GitHub fork、Actions 和 GHCR 镜像变量已设置；9.6.0 首次翻译/发布流程尚未运行。Youdao API 调用、镜像多架构发布和 NAS 部署均未验证。
 - 官方文档声明架构，不等于本项目镜像已构建验证。CI 需检查多架构 manifest；容器运行烟测在 amd64 runner 上完成，ARM64 运行时还需设备或原生 runner 验证。
