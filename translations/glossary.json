@@ -1,0 +1,14 @@
+{
+  "Container": "容器",
+  "Image": "镜像",
+  "Registry": "镜像仓库",
+  "Update available": "发现可用更新",
+  "Up to date": "已是最新版本",
+  "Watcher": "监控器",
+  "Trigger": "触发器",
+  "Digest": "镜像摘要",
+  "Tag": "标签",
+  "Pull": "拉取",
+  "Restart": "重启",
+  "Rollback": "回滚"
+}

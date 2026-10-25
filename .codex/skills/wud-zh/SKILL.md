@@ -1,0 +1,29 @@
+# wud-zh maintenance
+
+## Scope
+
+This project rebuilds the official WUD source at a fixed, published stable release, translates static Vue UI text into Simplified Chinese, validates translation placeholders, runs the upstream checks, and publishes a multi-architecture image only after a reviewed update is merged. It does not modify NAS containers.
+
+## Safety and source
+
+- Never expose `YOUDAO_APP_SECRET` or pass it to upstream code, Docker builds, or untrusted pull-request jobs.
+- Never build from `main`, `latest`, or a moving branch. `upstream.lock.json` must contain the published release tag and resolved commit SHA.
+- Never overwrite an existing immutable image version. A failed update must leave the last stable image tags unchanged.
+- WUD requires Docker API access to monitor a Docker host. A socket mounted `:ro` still grants powerful Docker API operations.
+- Do not enable Docker or Docker Compose update triggers in the sample deployment.
+
+## Workflow
+
+1. Read `PROJECT_HANDOFF.md` and `docs/upstream-analysis.md`.
+2. Check the actual published stable release and commit before translating.
+3. Extract only static Vue template text and approved text attributes with the upstream Vue compiler parser. Do not translate identifiers, API keys, URLs, Docker references, or user data.
+4. Reuse `translations/memory.json`; validate interpolation tokens before persisting any new translation.
+5. Run upstream UI Jest tests against pristine English source first; current tests assert English UI literals. Then apply translations and run the production UI build plus project validation.
+6. Review the generated source, lock file, translation memory, coverage report, and workflow permissions before merging.
+7. Confirm image publication and manifest architectures after CI. Do not claim NAS runtime validation unless performed on that NAS.
+
+## References
+
+- Upstream analysis and exact source boundaries: `docs/upstream-analysis.md`
+- Translation API details: `docs/youdao-api.md`
+- Build, restore, and release procedures: `docs/architecture.md`

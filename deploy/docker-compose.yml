@@ -1,0 +1,17 @@
+services:
+  wud:
+    image: ${WUD_IMAGE:?Set WUD_IMAGE to a published fixed-version GHCR tag}
+    container_name: wud-zh
+    restart: unless-stopped
+    ports:
+      - "${WUD_HOST_PORT:-3000}:3000"
+    environment:
+      WUD_AUTH_ADMIN_USER: ${WUD_AUTH_ADMIN_USER:?Set WUD_AUTH_ADMIN_USER}
+      WUD_AUTH_ADMIN_PASSWORD: ${WUD_AUTH_ADMIN_PASSWORD:?Set WUD_AUTH_ADMIN_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - wud-data:/store
+
+volumes:
+  wud-data:

@@ -1,0 +1,167 @@
+name: Translate upstream release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published stable WUD version
+        required: true
+        type: string
+      commit:
+        description: Resolved upstream commit SHA
+        required: true
+        type: string
+
+concurrency:
+  group: translate-upstream
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+      - name: Confirm inputs match the latest published stable release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          data = json.loads(subprocess.check_output(["python3", "scripts/check_upstream.py"], text=True))
+          if (data["latest"], data["commit"]) != (os.environ["VERSION"], os.environ["COMMIT"]):
+              raise SystemExit("inputs do not match the latest published stable release")
+          PY
+      - name: Fetch exact source and extract UI text without secrets
+        env:
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          git clone --no-checkout https://github.com/getwud/wud.git upstream
+          git -C upstream fetch --depth 1 origin "$COMMIT"
+          git -C upstream checkout --detach FETCH_HEAD
+          test "$(git -C upstream rev-parse HEAD)" = "$COMMIT"
+          (cd upstream/ui && npm ci --include=dev --omit=optional --no-audit --no-fund --no-update-notifier)
+          node scripts/i18n.mjs extract --upstream upstream --output /tmp/wud-strings.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: wud-strings-${{ inputs.version }}
+          path: /tmp/wud-strings.json
+          if-no-files-found: error
+
+  translate-and-test:
+    needs: extract
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: wud-strings-${{ inputs.version }}
+          path: /tmp/wud-strings
+      - name: Translate only uncached UI text
+        env:
+          YOUDAO_APP_KEY: ${{ secrets.YOUDAO_APP_KEY }}
+          YOUDAO_APP_SECRET: ${{ secrets.YOUDAO_APP_SECRET }}
+          VERSION: ${{ inputs.version }}
+        run: python3 scripts/translate.py /tmp/wud-strings/wud-strings.json --version "$VERSION"
+      - name: Fetch source, apply translations, and run upstream tests
+        env:
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = "upstream.lock.json"
+          with open(p, encoding="utf-8") as f:
+              old = json.load(f)
+          old.update(version=os.environ["VERSION"], commit=os.environ["COMMIT"], release_url=f"https://github.com/getwud/wud/releases/tag/{os.environ['VERSION']}")
+          with open(p, "w", encoding="utf-8") as f:
+              json.dump(old, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          PY
+          git clone --no-checkout https://github.com/getwud/wud.git upstream
+          git -C upstream fetch --depth 1 origin "$COMMIT"
+          git -C upstream checkout --detach FETCH_HEAD
+          test "$(git -C upstream rev-parse HEAD)" = "$COMMIT"
+          (cd upstream/app && npm ci --include=dev --omit=optional --no-audit --no-fund --no-update-notifier)
+          (cd upstream/ui && npm ci --include=dev --omit=optional --no-audit --no-fund --no-update-notifier && npm run test:unit -- --runInBand)
+          node scripts/i18n.mjs extract --upstream upstream --output /tmp/current-wud-strings.json
+          cmp /tmp/wud-strings/wud-strings.json /tmp/current-wud-strings.json
+          node scripts/i18n.mjs apply --upstream upstream --translations translations/zh-CN.json --report /tmp/wud-coverage.json
+          (cd upstream/ui && npm run build)
+          (cd upstream/app && npm test -- --runInBand --forceExit)
+          cat /tmp/wud-coverage.json >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p /tmp/wud-update/translations
+          cp upstream.lock.json translations/memory.json translations/zh-CN.json /tmp/wud-update/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: wud-update-${{ inputs.version }}
+          path: /tmp/wud-update/
+          if-no-files-found: error
+
+  update-main-and-build:
+    needs: translate-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: wud-update-${{ inputs.version }}
+          path: /tmp/wud-update
+      - name: Commit validated update and dispatch image build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          cp /tmp/wud-update/upstream.lock.json .
+          cp /tmp/wud-update/memory.json translations/
+          cp /tmp/wud-update/zh-CN.json translations/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add upstream.lock.json translations/memory.json translations/zh-CN.json
+          git commit -m "更新 WUD 上游版本至 ${VERSION}"
+          cat > /tmp/git-askpass <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' x-access-token ;;
+            *) printf '%s\n' "$GH_TOKEN" ;;
+          esac
+          SH
+          chmod 700 /tmp/git-askpass
+          GIT_ASKPASS=/tmp/git-askpass GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
+          gh workflow run build-release.yml --ref main
+          echo "已将 WUD ${VERSION}（${COMMIT}）及翻译记忆写入 main，并派发 build-release.yml。" >> "$GITHUB_STEP_SUMMARY"
+      - name: Report failure
+        if: failure()
+        env:
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          echo "## 上游翻译/兼容性失败" >> "$GITHUB_STEP_SUMMARY"
+          echo "版本 ${VERSION}（${COMMIT}）未写入 main，也未派发镜像构建。检查最早失败步骤；现有镜像 tag 不受影响。" >> "$GITHUB_STEP_SUMMARY"

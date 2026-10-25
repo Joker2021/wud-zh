@@ -1,250 +1,45 @@
-<div align="center">
+# WUD 简体中文版构建
 
-<img src="website/docs/assets/wud-logo.svg" alt="WUD (What's Up Docker? Logo" width="220" />
+本项目从 WUD 官方**已发布稳定 Release 的固定 commit**构建，不维护 WUD 后端分叉。它以 Vue 编译器 AST 提取和替换 UI 模板中的静态英文文本，使用有道智云翻译新增文案，并在翻译覆盖、上游构建和测试通过后发布多架构 GHCR 镜像。
 
-# What's Up Docker? (WUD)
+当前核对基线为 WUD 9.6.0（上游 commit `ae3c0827c020e62ba15b8df6edd5b04aa05e9e62`）。此工程尚未关联 GitHub fork，也未发布镜像；请先完成[GitHub 配置](docs/github-setup.md)。
 
-### *Keep your containers up-to-date across any orchestrator, automatically and effortlessly.*
+## 本地翻译流程
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/getwud/wud?style=flat-square&logo=docker&logoColor=white&color=2496ED)](https://hub.docker.com/r/getwud/wud)
-[![GitHub Stars](https://img.shields.io/github/stars/getwud/wud?style=flat-square&logo=github&color=FFB800)](https://github.com/getwud/wud/stargazers)
-[![CI Status](https://img.shields.io/github/actions/workflow/status/getwud/wud/ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white)](https://github.com/getwud/wud/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/getwud/wud?style=flat-square&color=41B883)](https://github.com/getwud/wud/blob/main/LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-getwud.app-2563EB?style=flat-square&logo=docusaurus&logoColor=white)](https://getwud.app/)
-[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/fmartinou)
-[![Buy Me A Coffee](https://img.shields.io/badge/Donate-Buy%20Me%20A%20Coffee-orange?style=flat-square&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/61rUNMm)
-[![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?style=flat-square&logo=paypal&logoColor=white)](https://www.paypal.com/donate/?business=ZSDMEC3ZE8DQ8&no_recurring=0&currency_code=EUR)
+准备 WUD 对应 Release 的完整源码，先在 `ui/` 执行 `npm ci`，再运行：
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Orchestrators-Docker-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
-  <img src="https://img.shields.io/badge/Orchestrators-Docker%20Swarm-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Swarm" />
-  <img src="https://img.shields.io/badge/Orchestrators-Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white" alt="Kubernetes" />
-  <img src="https://img.shields.io/badge/Orchestrators-Nomad-00CA8E?style=flat-square&logo=nomad&logoColor=white" alt="Nomad" />
-  <img src="https://img.shields.io/badge/Orchestrators-Docker%20Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose" />
-</p>
-
-<p align="center">
-  <a href="https://getwud.app/"><b>📖 Documentation</b></a> •
-  <a href="https://getwud.app/docs/quickstart/"><b>🚀 Quick Start</b></a> •
-  <a href="https://getwud.app/docs/configuration/"><b>⚙️ Configuration</b></a> •
-  <a href="https://getwud.app/docs/configuration/triggers/"><b>🔔 Triggers</b></a> •
-  <a href="https://getwud.app/docs/configuration/registries/"><b>📦 Registries</b></a> •
-  <a href="CONTRIBUTING.md"><b>🛠️ Contributing</b></a> •
-  <a href="https://github.com/getwud/wud/issues"><b>💬 Issues & Support</b></a>
-</p>
-
----
-
-</div>
-
-<p align="center">
-  <img src="website/docs/assets/ui.png" alt="WUD Web Dashboard UI" width="850" style="border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);" />
-</p>
-
-## 💡 About WUD
-
-**WUD (What's Up Docker?)** is a lightweight, proactive container update monitoring and automation tool. It continuously scans your container environments, detects image updates across public and private registries, performs semantic version analysis, and alerts you via your favorite notification channels—or triggers automatic container updates seamlessly.
-
-```mermaid
-flowchart LR
-    W["🔍 <b>WATCHERS</b><br/>Discover running containers<br/><i>Docker, Swarm, Kubernetes, Compose, Nomad...</i>"]
-    WUD{{"⚡ <b>WUD ENGINE</b><br/>Compare versions &amp; digests"}}
-    R["📦 <b>REGISTRIES</b><br/>Inspect tags &amp; manifests<br/><i>Docker Hub, GHCR, Private OCI</i>"]
-    T["🚀 <b>TRIGGERS</b><br/>Notify &amp; Auto-Update<br/><i>Discord, Slack, Compose, MQTT</i>"]
-
-    W -->|"Scan"| WUD
-    WUD <-->|"Inspect"| R
-    WUD -->|"Execute"| T
+```sh
+node scripts/i18n.mjs extract --upstream /path/to/wud --output /tmp/wud-strings.json
+python3 scripts/translate.py /tmp/wud-strings.json --version 9.6.0 --dry-run
 ```
 
----
+设置 `YOUDAO_APP_KEY` 与 `YOUDAO_APP_SECRET` 后，去掉 `--dry-run` 生成记忆库和覆盖文件，再应用到一次性上游副本：
 
-## ✨ Features
-
-- 🔍 **Multi-Orchestrator Engine**  
-  Monitor standalone Docker daemons, remote Docker engines over TLS, Docker Compose setups, **Docker Swarm clusters**, native **Kubernetes clusters** (Deployments, StatefulSets, DaemonSets, CronJobs), or **HashiCorp Nomad** clusters.
-- 📦 **Multi-Registry Integration**  
-  Zero-config & authenticated support for **Docker Hub**, **GitHub Container Registry (GHCR)**, **AWS ECR**, **Google GCR/GAR**, **Azure ACR**, **Quay**, **GitLab**, **Gitea**, **Forgejo**, **Codeberg**, **LinuxServer (LSCR)**, and any custom/self-hosted OCI registry.
-- 🔔 **30+ Notification & Automation Triggers**  
-  Discord, Matrix, Mattermost, Zulip, Telegram, Slack, Signal, WhatsApp, Bark, Prowl, Home Assistant, Gotify, Ntfy, Pushover, Apprise, Webhooks, Kafka, AMQP/RabbitMQ, NATS, Opsgenie, PagerDuty, Uptime Kuma, GitHub Actions, GitLab CI, SMTP email, shell scripts, and native Docker / Compose / Nomad auto-updaters.
-- 🔄 **Automated Container Updates**  
-  Automatically pull new images and recreate containers on demand (Docker, Docker Compose, Nomad).
-- ⚡ **Registry Webhooks**: [Registry push notifications](website/docs/configuration/registries/webhooks.md), including GitLab Self-Managed, immediately check matching watched images while preserving existing labels and trigger policies.
-- 🏷️ **SemVer & Tag Filtering**  
-  Flexible versioning strategies: target `semver` (major, minor, patch), match custom regular expressions, pin versions, or define include/exclude tag rules.
-- 🖥️ **Interactive Web UI & REST API**  
-  Clean, responsive web dashboard to inspect container statuses, trigger manual update checks, and query data via a full-featured REST API.
-- 📊 **Prometheus & Grafana Ready**  
-  Built-in Prometheus `/metrics` endpoint and pre-built Grafana dashboards for observability.
-- 🔒 **Enterprise-Grade Authentication & RBAC**  
-  Role-Based Access Control (`admin`, `rw`, `ro`), database-backed user management, personal API tokens, and single sign-on with **OpenID Connect (OIDC)** (Keycloak, Authentik, Authelia, etc.) or local accounts.
-
----
-
-## ⚡ Quick Start
-
-### 1. Run with Docker
-
-```bash
-docker run -d \
-  --name wud \
-  -p 3000:3000 \
-  -e WUD_AUTH_ADMIN_USER="admin" \
-  -e WUD_AUTH_ADMIN_PASSWORD="MySecurePassword123" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  getwud/wud:latest
+```sh
+python3 scripts/translate.py /tmp/wud-strings.json --version 9.6.0
+node scripts/i18n.mjs apply --upstream /path/to/wud --translations translations/zh-CN.json
 ```
 
-### 2. Run with Docker Compose
+不要在包含密钥的 shell 输出或日志中打印环境变量。Actions 配置方法见[文档](docs/github-setup.md)。
 
-```yaml
-services:
-  whatsupdocker:
-    image: getwud/wud:latest
-    container_name: wud
-    ports:
-      - "3000:3000"
-    environment:
-      - WUD_AUTH_ADMIN_USER=admin
-      - WUD_AUTH_ADMIN_PASSWORD=MySecurePassword123
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
+## 部署
+
+复制 [`deploy/docker-compose.yml`](deploy/docker-compose.yml) 到绿联 Docker 的 Compose 项目，先填入 GHCR 镜像地址、管理员用户名和密码，再启动。部署和回滚见[绿联 NAS 指南](docs/nas-deployment.md)。
+
+## 安全和翻译边界
+
+- 示例默认不开启容器更新 Trigger；只监控 Docker 镜像更新。
+- Docker Socket 提供高权限 Docker API，`/var/run/docker.sock:ro` 也不等于只读 API。仅挂到可信容器。
+- 只发送上游 UI 静态文案到有道，不发送 NAS 配置、容器变量或用户数据。
+- 当前覆盖 `.vue` 模板中的静态文本以及 `placeholder`、`title`、`aria-label`、`alt`、`label` 属性。脚本生成的动态消息、后端英文响应及运行时语言切换未覆盖。
+- 官方新稳定版触发自动翻译和兼容性检查；通过后自动更新 fork 的 `main` 并派发构建。只有多架构构建及烟测通过才更新 GHCR 稳定标签。没有翻译 Secret 时只可复用全部缓存，否则工作流失败关闭。
+
+## 验证
+
+```sh
+python3 -m unittest discover -s tests -v
 ```
 
-> 🌐 **Access the Web UI**: Open [`http://localhost:3000`](http://localhost:3000) in your browser (login with `admin` / `MySecurePassword123`).
+当前测试只检查项目脚本的签名、占位符、缓存和失败原子性。上游应用测试、多架构构建、容器启动与真实绿联环境验证都由后续 Actions 或现场执行，不能从本地单元测试推断通过。
 
-### 3. Run in One-Shot CLI Mode (CI/CD & Cron)
-
-WUD can also run as a stateless, headless CLI tool without starting the web server or creating a database file:
-
-```bash
-# Run a single scan and print container status as JSON
-docker run --rm \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e WUD_RUN_MODE=oneshot \
-  getwud/wud:latest watch
-
-# Gate CI/CD pipelines: exit with code 1 if at least one update is available
-docker run --rm \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e WUD_RUN_MODE=oneshot \
-  getwud/wud:latest watch --update-available --fail-on-update
-```
-
-📖 Check the full [One-Shot Headless Mode Documentation](https://getwud.app/docs/configuration/oneshot/) for flags, NDJSON output, and cron examples.
-
----
-
-## 🧩 Supported Integrations
-
-### 🔍 Watchers & Orchestrators
-| Environment | Supported Workloads | Configuration Guide |
-| :--- | :--- | :---: |
-| [**Docker**](https://getwud.app/docs/configuration/watchers/) | Local socket, Remote TCP over TLS, Docker Compose | Built-in (Active by default) |
-| [**Docker Swarm**](https://getwud.app/docs/configuration/watchers/swarm/) | Services, Stacks, Replicated & Global workloads | Socket / Remote TCP over TLS |
-| [**Kubernetes**](https://getwud.app/docs/configuration/watchers/kubernetes/) | Deployments, StatefulSets, DaemonSets, CronJobs | In-cluster RBAC / Kubeconfig |
-| [**Nomad**](https://getwud.app/docs/configuration/watchers/nomad/) | Jobs (`service`, `batch`, `system`), Task Groups | HTTP API / ACL Token |
-
-### 📦 Registries
-| Registry | Description | Authentication |
-| :--- | :--- | :---: |
-| [**Docker Hub**](https://getwud.app/docs/configuration/registries/hub/) | Public and private Docker Hub images | Anonymous / Token / Password |
-| [**Docker Hardened Images (DHI)**](https://getwud.app/docs/configuration/registries/dhi/) | Docker Hardened Images (`dhi.io`) | Token / Password |
-| [**GitHub (GHCR)**](https://getwud.app/docs/configuration/registries/ghcr/) | GitHub Container Registry packages | Personal Access Token |
-| [**AWS ECR**](https://getwud.app/docs/configuration/registries/ecr/) | Amazon Elastic Container Registry | AWS IAM Keys / IAM Roles |
-| [**Google GCR / Artifact Registry**](https://getwud.app/docs/configuration/registries/gcr/) | GCP Container & Artifact Registry | Service Account Key (JSON) |
-| [**Azure ACR**](https://getwud.app/docs/configuration/registries/acr/) | Azure Container Registry | Service Principal / Admin Secret |
-| [**GitLab Registry**](https://getwud.app/docs/configuration/registries/gitlab/) | GitLab Container Registry | Deploy Token / PAT |
-| [**Quay.io**](https://getwud.app/docs/configuration/registries/quay/) | Red Hat Quay | Robot Account / OAuth Token |
-| [**Self-Hosted / OCI**](https://getwud.app/docs/configuration/registries/custom/) | Harbor, Nexus, Artifactory, Gitea, Forgejo, Codeberg | Basic Auth / Bearer Token |
-
-### 🔔 Triggers & Notifications
-| Category | Supported Channels |
-| :--- | :--- |
-| **Chat & Messaging** | [Discord](https://getwud.app/docs/configuration/triggers/discord/), [Matrix](https://getwud.app/docs/configuration/triggers/matrix/), [Mattermost](https://getwud.app/docs/configuration/triggers/mattermost/), [Signal](https://getwud.app/docs/configuration/triggers/signal/), [Telegram](https://getwud.app/docs/configuration/triggers/telegram/), [Slack](https://getwud.app/docs/configuration/triggers/slack/), [Rocket.Chat](https://getwud.app/docs/configuration/triggers/rocketchat/), [WhatsApp](https://getwud.app/docs/configuration/triggers/whatsapp/), [Zulip](https://getwud.app/docs/configuration/triggers/zulip/) |
-| **Push Notifications & Alerting** | [Bark](https://getwud.app/docs/configuration/triggers/bark/), [Gotify](https://getwud.app/docs/configuration/triggers/gotify/), [IFTTT](https://getwud.app/docs/configuration/triggers/ifttt/), [Ntfy](https://getwud.app/docs/configuration/triggers/ntfy/), [Opsgenie](https://getwud.app/docs/configuration/triggers/opsgenie/), [PagerDuty](https://getwud.app/docs/configuration/triggers/pagerduty/), [Prowl](https://getwud.app/docs/configuration/triggers/prowl/), [Pushover](https://getwud.app/docs/configuration/triggers/pushover/), [Apprise](https://getwud.app/docs/configuration/triggers/apprise/) |
-| **Auto-Update & Orchestration** | [Docker Container](https://getwud.app/docs/configuration/triggers/docker/), [Docker Compose](https://getwud.app/docs/configuration/triggers/docker-compose/), [HashiCorp Nomad](https://getwud.app/docs/configuration/triggers/nomad/) |
-| **IoT & Message Queues** | [AMQP (RabbitMQ)](https://getwud.app/docs/configuration/triggers/amqp/), [Apache Kafka](https://getwud.app/docs/configuration/triggers/kafka/), [MQTT (Home Assistant auto-discovery)](https://getwud.app/docs/configuration/triggers/mqtt/), [NATS](https://getwud.app/docs/configuration/triggers/nats/) |
-| **Automation & Custom** | [GitHub Actions](https://getwud.app/docs/configuration/triggers/githubactions/), [GitLab CI](https://getwud.app/docs/configuration/triggers/gitlabci/), [Home Assistant (Webhook)](https://getwud.app/docs/configuration/triggers/homeassistant/), [HTTP Webhooks](https://getwud.app/docs/configuration/triggers/http/), [Shell Command Execution](https://getwud.app/docs/configuration/triggers/command/), [SMTP Email](https://getwud.app/docs/configuration/triggers/smtp/), [Uptime Kuma](https://getwud.app/docs/configuration/triggers/uptimekuma/) |
-
----
-
-## 🏷️ Configuration via Labels & Annotations
-
-WUD can be configured globally through environment variables or granularly per container/workload using Docker labels or Kubernetes annotations:
-
-### Docker & Compose (Labels)
-
-```yaml
-services:
-  my-app:
-    image: myorg/myapp:1.2.0
-    labels:
-      # Only consider semver minor and patch updates (e.g. 1.2.1, 1.3.0, but not 2.0.0)
-      - "wud.tag.include=^1\\.\\d+\\.\\d+$"
-      - "wud.tag.transform=^v(.*)$$ => $$1"
-      
-      # Send update notifications to a specific Discord webhook
-      - "wud.trigger.discord.mywebhook.enabled=true"
-      
-      # Automatically recreate this container when an update is available
-      - "wud.trigger.docker.myupdater.enabled=true"
-```
-
-### Kubernetes (Annotations)
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-app
-  namespace: default
-  annotations:
-    # Explicitly watch this workload
-    getwud.app/watch: "true"
-    
-    # Only consider semver minor and patch updates
-    getwud.app/tag.include: "^1\\.\\d+\\.\\d+$"
-    getwud.app/tag.transform: "^v(.*)$ => $1"
-    
-    # Custom display icon in WUD UI
-    getwud.app/display.icon: "mdi:kubernetes"
-```
-
-Explore all configuration options in the [Configuration Hub](https://getwud.app/docs/configuration/).
-
----
-
-## 📚 Documentation
-
-For complete setup guides, advanced configurations, tutorials, and API references, check out our official documentation:
-
-👉 **[https://getwud.app/](https://getwud.app/)**
-
-- 🚀 [Getting Started & Tutorials](https://getwud.app/docs/quickstart/)
-- ⚙️ [Configuration Reference](https://getwud.app/docs/configuration/)
-- 🔍 [Docker Watcher & TLS](https://getwud.app/docs/configuration/watchers/)
-- 📦 [Registry Authentication](https://getwud.app/docs/configuration/registries/)
-- 🔔 [Triggers & Automation Setup](https://getwud.app/docs/configuration/triggers/)
-- 📊 [Prometheus & Grafana Monitoring](https://getwud.app/docs/monitoring/)
-- 🔌 [REST API Reference](https://getwud.app/docs/api/)
-- ❓ [Frequently Asked Questions (FAQ)](https://getwud.app/docs/faq/)
-
----
-
-## 💖 Supporting WUD
-
-WUD is free and open-source software built and maintained with passion. If WUD saves you time or helps keep your homelab and production containers running up-to-date, please consider supporting its ongoing development:
-
-- 💖 **[Sponsor @fmartinou on GitHub Sponsors](https://github.com/sponsors/fmartinou)**
-- ☕ **[Buy me a coffee](https://www.buymeacoffee.com/61rUNMm)**
-- 💳 **[Donate via PayPal](https://www.paypal.com/donate/?business=ZSDMEC3ZE8DQ8&no_recurring=0&currency_code=EUR)**
-
-Your support helps cover domain name renewals (`getwud.app`), AI developer tooling subscriptions, and rewards the time spent maintaining registry integrations and building new features. Thank you!
-
----
-
-## 📄 License
-
-This project is open-source software licensed under the [MIT License](https://github.com/getwud/wud/blob/main/LICENSE).
+更多信息：[`docs/upstream-analysis.md`](docs/upstream-analysis.md)、[`docs/architecture.md`](docs/architecture.md)、[`PROJECT_HANDOFF.md`](PROJECT_HANDOFF.md)。

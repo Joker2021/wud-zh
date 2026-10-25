@@ -109,3 +109,12 @@ website/static/openapi.yaml
 # Generated OpenHands sub-agents (single source of truth: .agents/personas/)
 # Regenerate with scripts/generate-openhands-agents.sh
 .openhands/agents/
+
+# wud-zh automation artifacts
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+upstream/
+coverage.json
+translations/extracted.json
