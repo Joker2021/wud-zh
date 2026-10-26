@@ -9,6 +9,10 @@ permissions:
   contents: read
   actions: write
 
+concurrency:
+  group: wud-zh-upstream-reconciliation
+  cancel-in-progress: false
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -38,3 +42,64 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run translate.yml -f version='${{ steps.check.outputs.version }}' -f commit='${{ steps.check.outputs.commit }}'
+
+  reconcile-build:
+    needs: check
+    if: needs.check.outputs.update != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Reconcile publication for the current upstream lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          COMMIT: ${{ needs.check.outputs.commit }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          with open("upstream.lock.json", encoding="utf-8") as f:
+              lock = json.load(f)
+          if (lock["version"], lock["commit"]) != (os.environ["VERSION"], os.environ["COMMIT"]):
+              raise SystemExit("main lock changed during upstream reconciliation; retry on the next check")
+          PY
+          release_tag="wud-${VERSION}-zh.1"
+          if gh api --include --silent "repos/${GITHUB_REPOSITORY}/releases/tags/${release_tag}" > /tmp/release-response.txt 2>/tmp/release-error.txt; then
+            release_exists=true
+          elif python3 -c 'import re, sys; sys.exit(0 if re.search(r"^HTTP/\S+\s+404\b", open(sys.argv[1], encoding="utf-8").read(), re.MULTILINE) else 1)' /tmp/release-response.txt; then
+            release_exists=false
+          else
+            release_exists=unknown
+          fi
+          gh run list --workflow build-release.yml --branch main --limit 1000 --json displayTitle,status,conclusion,createdAt > /tmp/build-runs.json
+          decision="$(python3 scripts/reconcile_build.py --runs /tmp/build-runs.json --version "$VERSION" --commit "$COMMIT" --release-exists "$release_exists" --max-attempts 3)"
+          echo "Build reconciliation for WUD ${VERSION} (${COMMIT}): ${decision}" | tee -a "$GITHUB_STEP_SUMMARY"
+          case "$decision" in
+            dispatch)
+              gh workflow run build-release.yml --ref main -f "version=$VERSION" -f "commit=$COMMIT"
+              echo "Dispatched the missing publication attempt." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            active|complete)
+              echo "No dispatch needed." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            capped)
+              echo "Automatic build retry cap reached; maintainer review is required." >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning::Automatic build retry cap reached for WUD ${VERSION} (${COMMIT})."
+              ;;
+            ambiguous)
+              echo "Build history could not be matched safely; no dispatch was sent." >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning::Build history is ambiguous for WUD ${VERSION} (${COMMIT}); no automatic dispatch was sent."
+              ;;
+            *)
+              echo "Unknown reconciliation decision: $decision" >&2
+              exit 1
+              ;;
+          esac

@@ -9,7 +9,9 @@ This fork rebuilds the official WUD source at a fixed, published stable release,
 - Never expose `YOUDAO_APP_SECRET` or pass it to upstream code, Docker builds, or untrusted pull-request jobs.
 - Never build from `main`, `latest`, or a moving branch. `upstream.lock.json` must contain the published release tag and resolved commit SHA.
 - Never overwrite an existing immutable image version. A failed update must leave the last stable image tags unchanged.
-- Publish jobs must serialize GHCR tag mutations, verify an existing immutable tag by manifest digest before resuming, and re-read `upstream.lock.json` from `main` immediately before moving `stable/latest`; an older queued build may publish its immutable version but must not roll aliases backward.
+- Publish jobs must serialize GHCR tag mutations and re-read `upstream.lock.json` from `main` immediately before moving `stable/latest`; an older queued build may publish its immutable version but must not roll aliases backward.
+- If an immutable version tag differs from a rebuilt candidate, never retag it. Reuse it only after verifying `org.opencontainers.image.version`, `org.opencontainers.image.revision`, and linux/amd64 plus linux/arm64 manifests for both architectures; promote aliases from the immutable version tag.
+- Scheduled upstream checks reconcile publication by exact build run-name (`version` + upstream `commit`): queued/running builds block duplicates, failed attempts retry up to three total, and unknown run or Release API state fails closed. During migration, an existing version Release with no exact-name run means complete; an exact-name failure still retries.
 - WUD requires Docker API access to monitor a Docker host. A socket mounted `:ro` still grants powerful Docker API operations.
 - Do not enable Docker or Docker Compose update triggers in the sample deployment.
 
@@ -23,7 +25,7 @@ This fork rebuilds the official WUD source at a fixed, published stable release,
 6. Review generated source, lock file, translation memory, coverage report, and workflow permissions when changing this automation.
 7. Confirm image publication and manifest architectures after CI. Do not claim NAS runtime validation unless performed on that NAS.
 
-The inherited upstream `ci.yml` workflow is disabled on this fork to prevent publishing an unrelated upstream image or deploying upstream documentation. Keep image builds behind the explicit `build-release.yml` dispatch from the successful translation workflow.
+The inherited upstream `ci.yml` workflow is disabled on this fork to prevent publishing an unrelated upstream image or deploying upstream documentation. Keep image builds behind the `check-upstream.yml` reconciliation, which dispatches `build-release.yml` with the exact version and upstream commit inputs.
 
 ## References
 

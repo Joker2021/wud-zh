@@ -2,6 +2,17 @@ name: Build and publish WUD Chinese image
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: WUD release version in upstream.lock.json
+        required: true
+        type: string
+      commit:
+        description: WUD source commit in upstream.lock.json
+        required: true
+        type: string
+
+run-name: Build WUD ${{ inputs.version }} (${{ inputs.commit }})
 
 permissions:
   contents: read
@@ -26,12 +37,17 @@ jobs:
       - uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
       - name: Load release lock
         id: source
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_COMMIT: ${{ inputs.commit }}
         run: |
           python3 - <<'PY'
           import json, os, re
           d = json.load(open("upstream.lock.json", encoding="utf-8"))
           if not re.fullmatch(r"\d+\.\d+\.\d+", d["version"]) or not re.fullmatch(r"[0-9a-f]{40}", d["commit"]):
               raise SystemExit("invalid upstream lock")
+          if (d["version"], d["commit"]) != (os.environ["INPUT_VERSION"], os.environ["INPUT_COMMIT"]):
+              raise SystemExit("workflow inputs do not match upstream.lock.json")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
               f.write(f"version={d['version']}\ncommit={d['commit']}\n")
           PY
@@ -172,15 +188,43 @@ jobs:
             exit 1
           fi
 
+          verify_architectures() {
+            docker buildx imagetools inspect --raw "$1" |
+              jq -e '([.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null) and ([.manifests[].platform | select(.os == "linux") | .architecture] | index("arm64") != null)' >/dev/null
+          }
+
+          verify_source_labels() {
+            local image_ref="$1" arch
+            for arch in amd64 arm64; do
+              if ! skopeo inspect --authfile "$HOME/.docker/config.json" --config --override-os linux --override-arch "$arch" "docker://$image_ref" |
+                python3 -c 'import json, sys; cfg=json.load(sys.stdin); labels=(cfg.get("config") or {}).get("Labels") or {}; sys.exit(0 if labels.get("org.opencontainers.image.version") == sys.argv[1] and labels.get("org.opencontainers.image.revision") == sys.argv[2] else 1)' "$VERSION" "$COMMIT"; then
+                return 1
+              fi
+            done
+          }
+
+          tag_digest_state() {
+            if [[ "$1" == "$2" ]]; then
+              printf 'same'
+            else
+              printf 'different'
+            fi
+          }
+          test "$(tag_digest_state sha256:one sha256:one)" = same
+          test "$(tag_digest_state sha256:one sha256:two)" = different
+
           candidate_digest="$(image_digest "$candidate")"
+          version_ref="$IMAGE:$version_tag"
           if version_inspect="$(docker buildx imagetools inspect "$IMAGE:$version_tag" 2>&1)"; then
             version_digest="$(printf '%s\n' "$version_inspect" | digest_from_inspect)" || { echo "Could not read manifest digest for existing tag $version_tag" >&2; exit 1; }
             [[ "$version_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Could not read manifest digest for existing tag $version_tag" >&2; exit 1; }
-            if [[ "$version_digest" != "$candidate_digest" ]]; then
-              echo "Immutable image tag $version_tag already exists with a different digest" >&2
-              exit 1
+            if [[ "$(tag_digest_state "$candidate_digest" "$version_digest")" == different ]]; then
+              verify_architectures "$version_ref" || { echo "Existing immutable tag $version_tag lacks amd64/arm64 manifests" >&2; exit 1; }
+              verify_source_labels "$version_ref" || { echo "Existing immutable tag $version_tag has mismatched source labels" >&2; exit 1; }
+              echo "Candidate digest differs; reusing immutable image $version_ref after revision and architecture checks."
+            else
+              echo "Immutable image tag $version_tag already matches $candidate_digest; resuming publication."
             fi
-            echo "Immutable image tag $version_tag already matches $candidate_digest; resuming publication."
           else
             if ! grep -Eqi '(manifest unknown|not found)' <<<"$version_inspect"; then
               echo "Could not safely determine whether immutable image tag $version_tag exists:" >&2
@@ -215,4 +259,4 @@ jobs:
             exit 0
           fi
 
-          docker buildx imagetools create --tag "$IMAGE:stable" --tag "$IMAGE:latest" "$candidate"
+          docker buildx imagetools create --tag "$IMAGE:stable" --tag "$IMAGE:latest" "$version_ref"
