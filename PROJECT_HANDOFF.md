@@ -29,7 +29,7 @@
 
 - 已核对官方 9.6.0 Release、源码标签、UI package manifest、Dockerfile、Actions 多架构配置、MIT 许可证和 Youdao 文本翻译 API v3 文档。
 - 当前源码没有 i18n 框架，UI 为 Vue 3 / Vuetify 3 / Vue CLI；静态模板文案由上游 Vue compiler AST 解析，动态文案仅从 `scripts/i18n.mjs` 的精确源码锚点提取，锚点漂移会失败关闭。原始 UI 单测 48 套件/447 项通过；当前翻译覆盖门禁、UI production build 和 smoke 会检查所有动态翻译（含配置布尔值、退出/演示/复制提示）。
-- 最新本地复核：动态 UI 词典/记忆扩展到 26 个动态源片段；展示层把已知 `admin`/`rw`/`ro` 角色映射为“管理员/读写/只读”，未知角色保留原值且权限判断仍用原始 role。当前项目 Python 测试、Vue production build、workflow YAML/run 脚本语法及 `git diff --check` 已运行。未运行 Actions/GHCR/绿联 NAS。
+- 最新本地复核：动态 UI 词典/记忆扩展到 26 个动态源片段；展示层把已知 `admin`/`rw`/`ro` 角色映射为“管理员/读写/只读”，未知角色保留原值且权限判断仍用原始 role。run 40441215348 的 smoke 用宿主机 chunk 文件名读取镜像，因 Docker 内重建的 JS chunk hash 不同而漏检配置抽屉文案；已改为从容器 `/home/node/app/ui/js` 枚举并检查实际服务资源的 JavaScript Content-Type。修复尚未经新的 Actions run 验证。当前项目 Python 测试、Vue production build、workflow YAML/run 脚本语法及 `git diff --check` 已运行。未运行 Actions/GHCR/绿联 NAS。
 - 漏派发恢复：translate 请求 check-upstream 协调发布；协调器按 exact run-name `Build WUD <version> (<commit>) zh.<revision>` 查运行记录，自动 revision 1，失败最多 3 次，queued/in_progress 防重复。旧格式 run 迁移时，无新格式匹配记录但版本 Release 已存在则视为已发布；若精确匹配的新 run 失败，即使 Release 已存在仍重试。Release API 状态不确定时 fail closed。
 - `build-release.yml` 现在要求 workflow_dispatch 提供与 lock 一致的 `version` 和 `commit`，并支持正整数 revision（默认 `1`）；run-name 记录三者，reconciler 不拉取完整 Git 历史。自动协调固定使用 revision `1`，发布标签为 `${VERSION}-zh.${REVISION}`，项目 revision OCI label 用于安全续跑校验。`9.6.0-zh.2` 尚未发布；UGREEN Compose 仍指向已发布的 `.1`。
 - 锁定的上游 9.6.0 不支持 `WUD_AUTH_SESSION_SECRET`；该变量会被误识别为未知的 `session` auth provider。绿联 Compose 改用固定 bridge MAC `02:00:00:00:12:12` 供 `getmac` 回退读取，端口为 `12712:3000`。这是配置 workaround，尚未在真实绿联 NAS 验证；未修改 backend 或上游构建工作流。

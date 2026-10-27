@@ -133,8 +133,20 @@ jobs:
               raise SystemExit("No JavaScript assets found in UI")
           assets = [urlopen(urljoin(base, src)).read().decode("utf-8", errors="replace") for src in parser.sources]
           from pathlib import Path
-          for asset in Path("upstream/ui/dist/js").glob("*.js"):
-              assets.append(urlopen(urljoin(base, "/js/" + asset.name)).read().decode("utf-8", errors="replace"))
+          import subprocess
+          image_js = subprocess.check_output(
+              ["docker", "exec", "wud-smoke", "find", "/home/node/app/ui/js", "-type", "f", "-name", "*.js"],
+              text=True,
+          ).splitlines()
+          if not image_js:
+              raise SystemExit("No JavaScript files found in image path /home/node/app/ui/js")
+          for path in image_js:
+              asset_path = Path(path).relative_to("/home/node/app/ui").as_posix()
+              with urlopen(urljoin(base, "/" + asset_path)) as response:
+                  content_type = response.headers.get("Content-Type", "").lower()
+                  if "javascript" not in content_type:
+                      raise SystemExit(f"Image UI asset did not return JavaScript: /{asset_path} ({content_type})")
+                  assets.append(response.read().decode("utf-8", errors="replace"))
           text = "\n".join(assets)
           if not re.search(r"[\u4e00-\u9fff]", text):
               raise SystemExit("No Chinese text found in referenced JavaScript assets")
