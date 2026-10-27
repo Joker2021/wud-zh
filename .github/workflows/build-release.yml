@@ -11,8 +11,13 @@ on:
         description: WUD source commit in upstream.lock.json
         required: true
         type: string
+      revision:
+        description: Chinese image revision for this upstream release
+        required: false
+        default: "1"
+        type: string
 
-run-name: Build WUD ${{ inputs.version }} (${{ inputs.commit }})
+run-name: Build WUD ${{ inputs.version }} (${{ inputs.commit }}) zh.${{ inputs.revision }}
 
 permissions:
   contents: read
@@ -23,6 +28,7 @@ jobs:
     outputs:
       version: ${{ steps.source.outputs.version }}
       commit: ${{ steps.source.outputs.commit }}
+      revision: ${{ steps.source.outputs.revision }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -40,16 +46,19 @@ jobs:
         env:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_COMMIT: ${{ inputs.commit }}
+          INPUT_REVISION: ${{ inputs.revision }}
         run: |
           python3 - <<'PY'
           import json, os, re
           d = json.load(open("upstream.lock.json", encoding="utf-8"))
           if not re.fullmatch(r"\d+\.\d+\.\d+", d["version"]) or not re.fullmatch(r"[0-9a-f]{40}", d["commit"]):
               raise SystemExit("invalid upstream lock")
+          if not re.fullmatch(r"[1-9][0-9]*", os.environ["INPUT_REVISION"]):
+              raise SystemExit("revision must be a positive integer")
           if (d["version"], d["commit"]) != (os.environ["INPUT_VERSION"], os.environ["INPUT_COMMIT"]):
               raise SystemExit("workflow inputs do not match upstream.lock.json")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-              f.write(f"version={d['version']}\ncommit={d['commit']}\n")
+              f.write(f"version={d['version']}\ncommit={d['commit']}\nrevision={os.environ['INPUT_REVISION']}\n")
           PY
       - name: Fetch exact source
         env:
@@ -65,6 +74,14 @@ jobs:
           (cd upstream/ui && npm ci --include=dev --omit=optional --no-audit --no-fund --no-update-notifier && npm run test:unit -- --runInBand)
           node scripts/i18n.mjs extract --upstream upstream --output /tmp/wud-strings.json
           node scripts/i18n.mjs apply --upstream upstream --translations translations/zh-CN.json --report /tmp/wud-coverage.json
+          python3 - <<'PY'
+          from pathlib import Path
+          nav = Path("upstream/ui/src/components/NavigationDrawer.vue").read_text(encoding="utf-8")
+          required = ["labels[role] ?? role", 'props.user.role === "admin"', 'newUser.role !== "admin"']
+          missing = [value for value in required if value not in nav]
+          if missing:
+              raise SystemExit(f"Role display fallback or raw authorization checks changed: {missing}")
+          PY
           (cd upstream/ui && npm run build)
           python3 - <<'PY'
           from pathlib import Path
@@ -78,8 +95,9 @@ jobs:
         env:
           VERSION: ${{ steps.source.outputs.version }}
           COMMIT: ${{ steps.source.outputs.commit }}
+          REVISION: ${{ steps.source.outputs.revision }}
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 --file upstream/Dockerfile --build-arg WUD_VERSION="$VERSION" --label org.opencontainers.image.source=https://github.com/getwud/wud --label org.opencontainers.image.revision="$COMMIT" --label org.opencontainers.image.version="$VERSION" --output type=oci,dest=/tmp/wud-image.oci.tar upstream
+          docker buildx build --platform linux/amd64,linux/arm64 --file upstream/Dockerfile --build-arg WUD_VERSION="$VERSION" --label org.opencontainers.image.source=https://github.com/getwud/wud --label org.opencontainers.image.revision="$COMMIT" --label org.opencontainers.image.version="$VERSION" --label io.github.joker2021.wud-zh.revision="$REVISION" --output type=oci,dest=/tmp/wud-image.oci.tar upstream
       - name: Smoke-test amd64 image without Docker Socket
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq skopeo
@@ -113,12 +131,17 @@ jobs:
           parser.feed(urlopen(base).read().decode("utf-8", errors="replace"))
           if not parser.sources:
               raise SystemExit("No JavaScript assets found in UI")
-          for src in parser.sources:
-              text = urlopen(urljoin(base, src)).read().decode("utf-8", errors="replace")
-              if re.search(r"[\u4e00-\u9fff]", text):
-                  break
-          else:
+          assets = [urlopen(urljoin(base, src)).read().decode("utf-8", errors="replace") for src in parser.sources]
+          from pathlib import Path
+          for asset in Path("upstream/ui/dist/js").glob("*.js"):
+              assets.append(urlopen(urljoin(base, "/js/" + asset.name)).read().decode("utf-8", errors="replace"))
+          text = "\n".join(assets)
+          if not re.search(r"[\u4e00-\u9fff]", text):
               raise SystemExit("No Chinese text found in referenced JavaScript assets")
+          expected = ["是", "否", "管理员", "读写", "只读", "退出登录时出错", "已切换到演示用户：", "已复制到剪贴板", "无法复制", "到剪贴板"]
+          missing = [value for value in expected if value not in text]
+          if missing:
+              raise SystemExit(f"Chinese dynamic UI labels are missing from JavaScript assets: {missing}")
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -157,11 +180,12 @@ jobs:
           IMAGE: ${{ vars.WUD_IMAGE }}
           VERSION: ${{ needs.validate-build.outputs.version }}
           COMMIT: ${{ needs.validate-build.outputs.commit }}
+          REVISION: ${{ needs.validate-build.outputs.revision }}
           SHA: ${{ github.sha }}
         run: |
           test -n "$IMAGE"
           IMAGE="${IMAGE,,}"
-          version_tag="${VERSION}-zh.1"
+          version_tag="${VERSION}-zh.${REVISION}"
           sudo apt-get update -qq && sudo apt-get install -y -qq skopeo
           candidate="$IMAGE:candidate-$SHA"
           skopeo copy --all --dest-authfile "$HOME/.docker/config.json" oci-archive:/tmp/wud-image.oci.tar "docker://$candidate"
@@ -197,7 +221,7 @@ jobs:
             local image_ref="$1" arch
             for arch in amd64 arm64; do
               if ! skopeo inspect --authfile "$HOME/.docker/config.json" --config --override-os linux --override-arch "$arch" "docker://$image_ref" |
-                python3 -c 'import json, sys; cfg=json.load(sys.stdin); labels=(cfg.get("config") or {}).get("Labels") or {}; sys.exit(0 if labels.get("org.opencontainers.image.version") == sys.argv[1] and labels.get("org.opencontainers.image.revision") == sys.argv[2] else 1)' "$VERSION" "$COMMIT"; then
+                python3 -c 'import json, sys; cfg=json.load(sys.stdin); labels=(cfg.get("config") or {}).get("Labels") or {}; sys.exit(0 if labels.get("org.opencontainers.image.version") == sys.argv[1] and labels.get("org.opencontainers.image.revision") == sys.argv[2] and labels.get("io.github.joker2021.wud-zh.revision") == sys.argv[3] else 1)' "$VERSION" "$COMMIT" "$REVISION"; then
                 return 1
               fi
             done
@@ -218,9 +242,9 @@ jobs:
           if version_inspect="$(docker buildx imagetools inspect "$IMAGE:$version_tag" 2>&1)"; then
             version_digest="$(printf '%s\n' "$version_inspect" | digest_from_inspect)" || { echo "Could not read manifest digest for existing tag $version_tag" >&2; exit 1; }
             [[ "$version_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Could not read manifest digest for existing tag $version_tag" >&2; exit 1; }
+            verify_architectures "$version_ref" || { echo "Existing immutable tag $version_tag lacks amd64/arm64 manifests" >&2; exit 1; }
+            verify_source_labels "$version_ref" || { echo "Existing immutable tag $version_tag has mismatched source or project revision labels" >&2; exit 1; }
             if [[ "$(tag_digest_state "$candidate_digest" "$version_digest")" == different ]]; then
-              verify_architectures "$version_ref" || { echo "Existing immutable tag $version_tag lacks amd64/arm64 manifests" >&2; exit 1; }
-              verify_source_labels "$version_ref" || { echo "Existing immutable tag $version_tag has mismatched source labels" >&2; exit 1; }
               echo "Candidate digest differs; reusing immutable image $version_ref after revision and architecture checks."
             else
               echo "Immutable image tag $version_tag already matches $candidate_digest; resuming publication."
@@ -243,7 +267,7 @@ jobs:
           if gh release view "$release_tag" >/dev/null 2>&1; then
             echo "GitHub Release $release_tag already exists; continuing publication."
           else
-            gh release create "$release_tag" --title "WUD ${VERSION} 简体中文版" --notes "基于 WUD ${VERSION}（${COMMIT}）构建。镜像：${IMAGE}:${version_tag}。双架构构建及 amd64 启动检查已通过。"
+            gh release create "$release_tag" --title "WUD ${VERSION} 简体中文版（修订版 ${REVISION}）" --notes "基于 WUD ${VERSION}（${COMMIT}）构建，简体中文版修订版 ${REVISION}。镜像：${IMAGE}:${version_tag}。双架构构建及 amd64 启动检查已通过。"
           fi
 
           # Only the lock currently on main may advance the mutable aliases. A queued

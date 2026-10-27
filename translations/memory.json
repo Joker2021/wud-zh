@@ -2977,5 +2977,239 @@
     "updatedAt": "2026-10-25T17:16:00.356766+00:00",
     "origin": "codex",
     "reviewed": false
+  },
+  "53af39cc6516d58a101cf8e8654abed898af7434f9d83d6f141ba4d98bcafa38": {
+    "source": "server",
+    "translation": "服务端",
+    "context": "script:configurationItems.name:server",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "c1dc408dd03486a9083a7c913475485e2811ee097433ba313740f17219bb478b": {
+    "source": "registries",
+    "translation": "镜像仓库",
+    "context": "script:configurationItems.name:registries",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "8e0ac078217106ae295c75e3d28d390cd067ddae87bcf6182c158fb58e76a39a": {
+    "source": "watchers",
+    "translation": "监控器",
+    "context": "script:configurationItems.name:watchers",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "bde8c3be7336b2109843662692f5f8c85a87b20b3d090a7df38a2c76260292ce": {
+    "source": "triggers",
+    "translation": "触发器",
+    "context": "script:configurationItems.name:triggers",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "52f0b6de44199fc75a308d61b3354b04395263882be5911ace757755410129ff": {
+    "source": "auth",
+    "translation": "认证",
+    "context": "script:configurationItems.name:auth",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "ccc4fd1cb107c55db3677cb030018e0de70c6a5cd16da56fe01385f5a9062611": {
+    "source": "users",
+    "translation": "用户",
+    "context": "script:configurationItems.name:users",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "e64a3fa1b8ccbb5ed4bea986d5035ed985093d8bfbe2d3ade29a0736ebad74d2": {
+    "source": "Settings",
+    "translation": "设置",
+    "context": "script:userName.fallback:Settings",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "58170df40edfb763fde7b90ab0c48c199bcd9031b1ab8d357f24eb8911a8d926": {
+    "source": "Connected",
+    "translation": "已连接",
+    "context": "script:userSubtitle.connected:Connected",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "0b2a5583c0b879ef6cc2331876e3c4832774b07ae794ed342cf99fec7493d4d2": {
+    "source": "Preferences",
+    "translation": "偏好设置",
+    "context": "script:userSubtitle.preferences:Preferences",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "d9ef866731b95fe1f9c9f2c40ba3f70d72b0b666e954bd112fe32f094a3b197a": {
+    "source": "Expand sidebar",
+    "translation": "展开侧边栏",
+    "context": "button:@title:Expand sidebar",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "130de1505f9d086c4299087d1a8aafe78cfe0dd43da6c6c58c07ab89212686a6": {
+    "source": "Collapse sidebar",
+    "translation": "收起侧边栏",
+    "context": "button:@title:Collapse sidebar",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "9a72d573b78427c477ce90e40195149f46e4c4b3d1dc65e7aca3525943b276d4": {
+    "source": "entry",
+    "translation": "项",
+    "context": "configurationItems:count:entry",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "88cc998c0811b81b8d3ac7542de006caa99d322685923f1670bbdde1e9946107": {
+    "source": "entries",
+    "translation": "项",
+    "context": "configurationItems:count:entries",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "b82340201bee8d80221482a93eaed7498b636a67f4e4f67bd100d2bffe6e96d4": {
+    "source": "true",
+    "translation": "是",
+    "context": "configuration:boolean:true",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "8325c8a26562b48923cb6c85ce24c2d817b87d04e0d51ec6f95bfdc17ad9c1cd": {
+    "source": "false",
+    "translation": "否",
+    "context": "configuration:boolean:false",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "09de2871edfe3109b5edece380988d353bd797d2eda701f8639618126d2e827c": {
+    "source": "Error when trying to logout (",
+    "translation": "退出登录时出错（",
+    "context": "script:logout.error:Error when trying to logout (",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "5c38cd334012d8156ccd02d43d1ad5570f1355a7cf2faad65ef030627b776799": {
+    "source": ")",
+    "translation": "）",
+    "context": "script:logout.error:)",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "781fac6f1b3e26898d1433290dc6a04904185c41b95cccdbc5d361a42cff5b02": {
+    "source": "Switched to demo user: ",
+    "translation": "已切换到演示用户：",
+    "context": "script:demo.switch:Switched to demo user: ",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "c259762d8aa731b7e32971f7f3e9e4f2a12a66c74a499c13505db2282b850ba5": {
+    "source": " (",
+    "translation": "（",
+    "context": "script:demo.switch: (",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "ebcd40c195467786986a4ba06ae3f72fc4af0f403dd3151fe60221ca05eca329": {
+    "source": ")",
+    "translation": "）",
+    "context": "script:demo.switch:)",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "ecdf1c68627e64b3ee094ecb63ccf153dd32a2f8c0be1e98af8b7a41d8e6c143": {
+    "source": " copied to clipboard",
+    "translation": " 已复制到剪贴板",
+    "context": "script:configuration.copy.success: copied to clipboard",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "a8f9f8127b7959fae252382b814bdb8d0954f5cef2aae6d1741766ec606abc5a": {
+    "source": "Unable to copy ",
+    "translation": "无法复制 ",
+    "context": "script:configuration.copy.failure:Unable to copy ",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "e4d35c7bec2529dcc102bf55ef118513c96fc54be3b975dcad5b43c321596698": {
+    "source": " to clipboard",
+    "translation": " 到剪贴板",
+    "context": "script:configuration.copy.failure: to clipboard",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "7247de6194ebc1e12db36580a24dd81a62b560ee69cb66867c05f796b4da5aad": {
+    "source": "admin",
+    "translation": "管理员",
+    "context": "script:userRole.display:admin",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "753d325e58b6d81a7ff01336c000d51a34bf822400eff8a76e478a2a73934416": {
+    "source": "rw",
+    "translation": "读写",
+    "context": "script:userRole.display:rw",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
+  },
+  "da4adc6be7e82174a7ae9308bce85a57bb650b03fd9ac6be1bac4756149c12b1": {
+    "source": "ro",
+    "translation": "只读",
+    "context": "script:userRole.display:ro",
+    "sourceVersion": "9.6.0",
+    "updatedAt": "2026-10-27T00:00:00+08:00",
+    "origin": "codex",
+    "reviewed": false
   }
 }

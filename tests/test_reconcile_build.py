@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.reconcile_build import decide_build, run_title
+from scripts.reconcile_build import decide_build, legacy_run_title, run_title
 
 
 class ReconcileBuildTests(unittest.TestCase):
@@ -26,6 +26,24 @@ class ReconcileBuildTests(unittest.TestCase):
     def test_successful_run_and_release_are_complete(self):
         runs = [{"displayTitle": self.title, "status": "completed", "conclusion": "success", "createdAt": "2026-01-02T00:00:00Z"}]
         self.assertEqual(decide_build(self.version, self.commit, runs, True), "complete")
+
+    def test_revision_titles_are_distinct(self):
+        self.assertNotEqual(self.title, run_title(self.version, self.commit, "2"))
+        self.assertIn("zh.2", run_title(self.version, self.commit, "2"))
+
+    def test_revision_two_does_not_count_revision_one_runs(self):
+        runs = [{"displayTitle": self.title, "status": "completed", "conclusion": "failure", "createdAt": "2026-01-02T00:00:00Z"}]
+        self.assertEqual(decide_build(self.version, self.commit, runs, False, revision="2"), "dispatch")
+
+    def test_legacy_revision_one_active_run_blocks_duplicate(self):
+        runs = [{"displayTitle": legacy_run_title(self.version, self.commit), "status": "in_progress", "conclusion": None, "createdAt": "2026-01-02T00:00:00Z"}]
+        self.assertEqual(decide_build(self.version, self.commit, runs, False), "active")
+
+    def test_revision_must_be_positive_integer(self):
+        with self.assertRaises(ValueError):
+            run_title(self.version, self.commit, "0")
+        with self.assertRaises(ValueError):
+            run_title(self.version, self.commit, "1; rm -rf /")
 
     def test_existing_release_is_migration_baseline_without_new_format_run(self):
         self.assertEqual(decide_build(self.version, self.commit, [], True), "complete")

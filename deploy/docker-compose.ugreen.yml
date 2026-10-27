@@ -1,0 +1,21 @@
+services:
+  wud:
+    image: ghcr.io/joker2021/wud-zh:9.6.0-zh.1
+    container_name: wud-zh
+    restart: unless-stopped
+    ports:
+      - "12712:3000"
+    environment:
+      WUD_AUTH_ADMIN_USER: ${WUD_AUTH_ADMIN_USER:?Set WUD_AUTH_ADMIN_USER}
+      WUD_AUTH_ADMIN_PASSWORD: ${WUD_AUTH_ADMIN_PASSWORD:?Set WUD_AUTH_ADMIN_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /volume1/docker/AppData/wud-zh/data:/store
+    networks:
+      wud-bridge:
+        mac_address: 02:00:00:00:12:12
+
+networks:
+  wud-bridge:
+    driver: bridge

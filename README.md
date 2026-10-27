@@ -24,14 +24,14 @@ node scripts/i18n.mjs apply --upstream /path/to/wud --translations translations/
 
 ## 部署
 
-复制 [`deploy/docker-compose.yml`](deploy/docker-compose.yml) 到绿联 Docker 的 Compose 项目，先填入 GHCR 镜像地址、管理员用户名和密码，再启动。部署和回滚见[绿联 NAS 指南](docs/nas-deployment.md)。
+绿联 NAS 可用 [`deploy/docker-compose.ugreen.yml`](deploy/docker-compose.ugreen.yml)，将 Compose 项目目录设为 `/volume1/docker/AppData/wud-zh`，并在 Container Manager 中设置管理员用户名和密码后启动。该示例为固定 `getmac` 回退配置 bridge MAC；需在绿联实机验证。部署和回滚见[绿联 NAS 指南](docs/nas-deployment.md)。
 
 ## 安全和翻译边界
 
 - 示例默认不开启容器更新 Trigger；只监控 Docker 镜像更新。
 - Docker Socket 提供高权限 Docker API，`/var/run/docker.sock:ro` 也不等于只读 API。仅挂到可信容器。
 - 只发送上游 UI 静态文案到有道，不发送 NAS 配置、容器变量或用户数据。
-- 当前覆盖 `.vue` 模板中的静态文本以及 `placeholder`、`title`、`aria-label`、`alt`、`label` 属性。脚本生成的动态消息、后端英文响应及运行时语言切换未覆盖。
+- 覆盖 `.vue` 模板静态文本及 `placeholder`、`title`、`aria-label`、`alt`、`label` 属性；另对导航抽屉中已知的配置名称、用户状态和侧栏提示，以及配置计数词做源锚点校验后翻译。其他脚本生成的动态消息、后端英文响应及运行时语言切换仍未覆盖。
 - 官方新稳定版触发自动翻译和兼容性检查；通过后自动更新 fork 的 `main` 并派发构建。只有多架构构建及烟测通过才更新 GHCR 稳定标签。没有翻译 Secret 时只可复用全部缓存，否则工作流失败关闭。
 
 ## 验证

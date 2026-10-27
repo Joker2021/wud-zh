@@ -71,7 +71,8 @@ jobs:
           if (lock["version"], lock["commit"]) != (os.environ["VERSION"], os.environ["COMMIT"]):
               raise SystemExit("main lock changed during upstream reconciliation; retry on the next check")
           PY
-          release_tag="wud-${VERSION}-zh.1"
+          revision=1
+          release_tag="wud-${VERSION}-zh.${revision}"
           if gh api --include --silent "repos/${GITHUB_REPOSITORY}/releases/tags/${release_tag}" > /tmp/release-response.txt 2>/tmp/release-error.txt; then
             release_exists=true
           elif python3 -c 'import re, sys; sys.exit(0 if re.search(r"^HTTP/\S+\s+404\b", open(sys.argv[1], encoding="utf-8").read(), re.MULTILINE) else 1)' /tmp/release-response.txt; then
@@ -80,11 +81,11 @@ jobs:
             release_exists=unknown
           fi
           gh run list --workflow build-release.yml --branch main --limit 1000 --json displayTitle,status,conclusion,createdAt > /tmp/build-runs.json
-          decision="$(python3 scripts/reconcile_build.py --runs /tmp/build-runs.json --version "$VERSION" --commit "$COMMIT" --release-exists "$release_exists" --max-attempts 3)"
-          echo "Build reconciliation for WUD ${VERSION} (${COMMIT}): ${decision}" | tee -a "$GITHUB_STEP_SUMMARY"
+          decision="$(python3 scripts/reconcile_build.py --runs /tmp/build-runs.json --version "$VERSION" --commit "$COMMIT" --revision "$revision" --release-exists "$release_exists" --max-attempts 3)"
+          echo "Build reconciliation for WUD ${VERSION} (${COMMIT}), revision ${revision}: ${decision}" | tee -a "$GITHUB_STEP_SUMMARY"
           case "$decision" in
             dispatch)
-              gh workflow run build-release.yml --ref main -f "version=$VERSION" -f "commit=$COMMIT"
+              gh workflow run build-release.yml --ref main -f "version=$VERSION" -f "commit=$COMMIT" -f "revision=$revision"
               echo "Dispatched the missing publication attempt." >> "$GITHUB_STEP_SUMMARY"
               ;;
             active|complete)

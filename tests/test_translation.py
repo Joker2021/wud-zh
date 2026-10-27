@@ -13,6 +13,37 @@ from scripts.check_upstream import needs_update
 
 
 class TranslationTests(unittest.TestCase):
+    def test_dynamic_navigation_and_configuration_labels_are_catalogued(self):
+        root = Path(__file__).resolve().parents[1]
+        translations = json.loads((root / "translations/zh-CN.json").read_text(encoding="utf-8"))
+        memory = json.loads((root / "translations/memory.json").read_text(encoding="utf-8"))
+        expected = {
+            ("ui/src/components/ConfigurationDrawerContent.vue", "configuration:boolean:true", "true"): "是",
+            ("ui/src/components/ConfigurationDrawerContent.vue", "configuration:boolean:false", "false"): "否",
+            ("ui/src/components/NavigationDrawer.vue", "script:userRole.display:admin", "admin"): "管理员",
+            ("ui/src/components/NavigationDrawer.vue", "script:userRole.display:rw", "rw"): "读写",
+            ("ui/src/components/NavigationDrawer.vue", "script:userRole.display:ro", "ro"): "只读",
+            ("ui/src/components/NavigationDrawer.vue", "script:logout.error:Error when trying to logout (", "Error when trying to logout ("): "退出登录时出错（",
+            ("ui/src/components/NavigationDrawer.vue", "script:logout.error:)", ")"): "）",
+            ("ui/src/components/NavigationDrawer.vue", "script:demo.switch:Switched to demo user: ", "Switched to demo user: "): "已切换到演示用户：",
+            ("ui/src/components/NavigationDrawer.vue", "script:demo.switch: (", " ("): "（",
+            ("ui/src/components/NavigationDrawer.vue", "script:demo.switch:)", ")"): "）",
+            ("ui/src/components/ConfigurationDrawerContent.vue", "script:configuration.copy.success: copied to clipboard", " copied to clipboard"): " 已复制到剪贴板",
+            ("ui/src/components/ConfigurationDrawerContent.vue", "script:configuration.copy.failure:Unable to copy ", "Unable to copy "): "无法复制 ",
+            ("ui/src/components/ConfigurationDrawerContent.vue", "script:configuration.copy.failure: to clipboard", " to clipboard"): " 到剪贴板",
+        }
+        for (source_file, context, source), translation in expected.items():
+            key = hashlib.sha256(f"{source_file}\0{context}\0{source}".encode()).hexdigest()
+            self.assertEqual(translations[key], translation)
+            self.assertEqual(memory[key]["source"], source)
+            self.assertEqual(memory[key]["translation"], translation)
+
+    def test_role_display_mapping_falls_back_to_original_role(self):
+        root = Path(__file__).resolve().parents[1]
+        script = (root / "scripts/i18n.mjs").read_text(encoding="utf-8")
+        self.assertIn("labels[role] ?? role", script)
+        self.assertIn("props.user.role, ${roleMap}", script)
+
     def test_youdao_v3_signature_input_rules(self):
         self.assertEqual(input_signature("short text"), "short text")
         self.assertEqual(input_signature("0123456789abcdefghijXYZ"), "012345678923defghijXYZ")
