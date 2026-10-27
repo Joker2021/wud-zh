@@ -1,6 +1,6 @@
 services:
   wud:
-    image: ghcr.io/joker2021/wud-zh:9.6.0-zh.1
+    image: ghcr.io/joker2021/wud-zh:9.6.0-zh.2
     container_name: wud-zh
     restart: unless-stopped
     ports:
